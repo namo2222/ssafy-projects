@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>{{ book.title }}</h1>
+  <p>저자: {{ book.author }}</p>
+  <p>평점: {{ book.rating }} / 5</p>
+  <p>등록자: {{ book.user.username }}</p>
+
+  <h2 class="h5 mt-4">도서 설명</h2>
+  {{ book.description|linebreaks }}
+
+  {% if request.user == book.user %}
+    <div class="d-flex gap-2 mb-3">
+      <a href="{% url 'books:update' book.pk %}" class="btn btn-outline-primary">
+        수정
+      </a>
+
+      <form action="{% url 'books:delete' book.pk %}" method="POST">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-danger">삭제</button>
+      </form>
+    </div>
+  {% endif %}
+
+  <hr>
+  <h2 class="h4">감상글</h2>
+
+  {% if request.user.is_authenticated %}
+    <a href="{% url 'books:thread_create' book.pk %}">감상글 작성</a>
+  {% endif %}
+
+  <ul class="mt-3">
+    {% for thread in book.threads.all %}
+      <li>
+        <a href="{% url 'books:thread_detail' thread.pk %}">{{ thread.title }}</a>
+        · {{ thread.user.username }}
+      </li>
+    {% empty %}
+      <li>아직 작성된 감상글이 없습니다.</li>
+    {% endfor %}
+  </ul>
+
+  
+  <a href="{% url 'books:index' %}">도서 목록으로</a>
+{% endblock content %}

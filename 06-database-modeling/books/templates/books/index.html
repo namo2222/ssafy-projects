@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1 class="mb-4">도서 목록</h1>
+
+  {% for book in books %}
+    <div class="card mb-3">
+      <div class="card-body">
+        <h2 class="h5"><a href="{% url 'books:detail' book.pk %}">{{ book.title }}</a></h2>
+        <p class="mb-1">저자: {{ book.author }}</p>
+        <p class="mb-0">평점: {{ book.rating }}</p>
+      </div>
+    </div>
+  {% empty %}
+    <p>아직 등록된 도서가 없습니다.</p>
+  {% endfor %}
+{% endblock content %}

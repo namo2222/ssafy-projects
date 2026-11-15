@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>{{ thread.title }}</h1>
+  <p>도서: {{ thread.book.title }}</p>
+  <p>
+    작성자:
+    <a href="{% url 'accounts:profile' thread.user.username %}">
+      {{ thread.user.username }}
+    </a>
+  </p>
+  <p>독서일: {{ thread.reading_date|date:"Y-m-d" }}</p>
+
+  {{ thread.content|linebreaks }}
+
+  {% if request.user == thread.user %}
+    <section class="border rounded p-3 my-3">
+      <h2 class="h5">내 감상 더 써보기</h2>
+      <p class="text-muted mb-2">
+        내가 쓴 감상글을 바탕으로 AI가 질문 두 개를 만들어줘요.
+      </p>
+
+      <form id="question-form"
+            action="{% url 'books:thread_questions' thread.pk %}"
+            method="POST">
+        {% csrf_token %}
+        <button id="question-button" type="submit" class="btn btn-outline-primary">
+          {% if ai_result.questions %}질문 다시 생성{% else %}질문 생성{% endif %}
+        </button>
+        <span id="question-status" class="ms-2" role="status"></span>
+      </form>
+
+      {% if ai_result.questions %}
+        <ol class="mt-3 mb-0">
+          {% for question in ai_result.questions %}
+            <li>{{ question }}</li>
+          {% endfor %}
+        </ol>
+      {% elif ai_result.error %}
+        <p class="text-danger mt-3 mb-0" role="alert">{{ ai_result.error }}</p>
+      {% endif %}
+    </section>
+
+    <script>
+      const questionForm = document.getElementById('question-form');
+      const questionButton = document.getElementById('question-button');
+      const questionStatus = document.getElementById('question-status');
+
+      questionForm.addEventListener('submit', function () {
+        questionButton.disabled = true;
+        questionStatus.textContent = '질문 생성 중…';
+      });
+
+      window.addEventListener('pageshow', function () {
+        questionButton.disabled = false;
+        questionStatus.textContent = '';
+      });
+    </script>
+  {% endif %}
+
+  {% if request.user == thread.user %}
+    <div class="d-flex gap-2 mb-3">
+      <a href="{% url 'books:thread_update' thread.pk %}"
+        class="btn btn-outline-primary">
+        감상글 수정
+      </a>
+
+      <form action="{% url 'books:thread_delete' thread.pk %}" method="POST">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-danger">감상글 삭제</button>
+      </form>
+    </div>
+  {% endif %}
+
+  <p>좋아요 {{ thread.like_users.count }}개</p>
+
+  {% if request.user.is_authenticated %}
+    <form action="{% url 'books:like' thread.pk %}" method="POST" class="mb-3">
+      {% csrf_token %}
+
+      <button type="submit" class="btn btn-outline-primary">
+        {% if request.user in thread.like_users.all %}
+          좋아요 취소
+        {% else %}
+          좋아요
+        {% endif %}
+      </button>
+    </form>
+  {% endif %}
+
+  <a href="{% url 'books:detail' thread.book.pk %}">도서 상세로</a>
+{% endblock content %}

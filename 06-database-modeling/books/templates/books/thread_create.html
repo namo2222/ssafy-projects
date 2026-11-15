@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>감상글 작성</h1>
+  <p>도서: {{ book.title }}</p>
+
+  <form method="POST">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">감상글 등록</button>
+    <a href="{% url 'books:detail' book.pk %}">취소</a>
+  </form>
+{% endblock content %}

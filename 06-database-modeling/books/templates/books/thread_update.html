@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>감상글 수정</h1>
+  <p>도서: {{ thread.book.title }}</p>
+
+  <form method="POST">
+    {% csrf_token %}
+    {{ form.as_p }}
+
+    <button type="submit" class="btn btn-primary">수정 저장</button>
+    <a href="{% url 'books:thread_detail' thread.pk %}">취소</a>
+  </form>
+{% endblock content %}
