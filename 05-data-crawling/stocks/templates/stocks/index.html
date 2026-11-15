@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>토스증권 댓글 분석</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, -apple-system, "Malgun Gothic", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: #26344e; background: #f3f6fb; }
+    main { max-width: 1250px; margin: 0 auto; padding: 46px 24px 70px; }
+    header { margin-bottom: 24px; }
+    .eyebrow { font-size: 12px; font-weight: 750; letter-spacing: 1.4px; color: #3869bb; }
+    h1 { font-size: clamp(23px, 3vw, 32px); margin: 8px 0; letter-spacing: -.7px; }
+    p { line-height: 1.65; }
+    .sub { color: #6b7890; margin: 0; font-size: 14px; }
+    .search, .panel { background: white; border: 1px solid #e4eaf2; box-shadow: 0 4px 18px #1c407008; border-radius: 16px; }
+    .search { padding: 22px; margin: 22px 0; }
+    label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+    .input-line { display: flex; gap: 10px; }
+    input { flex: 1; min-width: 0; padding: 13px 15px; font-size: 15px; border: 1px solid #ccd6e6; border-radius: 9px; outline-color: #397be6; }
+    button { min-width: 110px; padding: 13px 18px; border: 0; border-radius: 9px; background: #2563d6; color: white; font-weight: 700; font-size: 14px; cursor: pointer; }
+    button:disabled { background: #89a8df; cursor: wait; }
+    .loading { margin: 12px 0 0; color: #2463c4; font-size: 13px; font-weight: 650; }
+    .result-header { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; margin: 20px 0 15px; }
+    .result-header h2 { font-size: 19px; margin: 0 0 5px; }
+    .badge { display: inline-block; padding: 7px 11px; background: #e5f6ed; color: #21734b; border-radius: 7px; font-size: 12px; font-weight: 700; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .panel { overflow: hidden; min-width: 0; }
+    .panel-head { border-bottom: 1px solid #e8edf5; padding: 17px 18px 14px; }
+    .panel-head h3 { font-size: 16px; margin: 0; }
+    .panel-head small { color: #7b879a; font-size: 12px; display: block; margin-top: 5px; line-height: 1.5; }
+    .count { color: #2563d6; font-weight: 800; }
+    .comments { max-height: 500px; overflow-y: auto; padding: 7px 18px 14px 40px; margin: 0; font-size: 13px; line-height: 1.7; }
+    .comments li { overflow-wrap: anywhere; padding: 11px 4px 11px 2px; border-bottom: 1px solid #eef1f6; }
+    .comments li:last-child { border-bottom: 0; }
+    .empty { padding: 20px; color: #7b879a; font-size: 13px; }
+    .extra { margin-top: 15px; padding: 16px 20px; }
+    .extra summary { font-size: 14px; font-weight: 700; cursor: pointer; }
+    .extra ul { margin: 14px 0 0; padding-left: 21px; font-size: 13px; line-height: 1.65; }
+    .extra li { padding: 4px 0; }
+    .notice { border: 1px solid; border-radius: 11px; padding: 13px 16px; margin: 13px 0; font-size: 13px; line-height: 1.7; }
+    .notice-error { color: #942b2b; background: #fff0f0; border-color: #f4c4c4; }
+    .notice-warning { color: #865713; background: #fffaea; border-color: #f2dfa2; }
+    .notice-info { color: #24518a; background: #eef6ff; border-color: #c7defc; }
+    .notice-success { color: #196342; background: #ebf9f0; border-color: #c4ead2; }
+    .summary-panel { padding: 19px 21px; margin-top: 16px; }
+    .summary-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    .summary-top h3 { margin: 0; font-size: 17px; }
+    .summary-text { font-size: 14px; line-height: 1.9; margin: 14px 0 0; white-space: pre-line; overflow-wrap: anywhere; }
+    .summary-button { min-width: 136px; }
+    .summary-help { font-size: 12px; color: #748197; margin: 10px 0 0; }
+    @media (max-width: 880px) { .grid { grid-template-columns: 1fr; } .comments { max-height: 300px; } }
+    @media (max-width: 460px) { main { padding: 27px 14px; } .input-line { flex-direction: column; } button { width: 100%; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="eyebrow">SSAFY · 05-PJT</div>
+      <h1>토스증권 커뮤니티 댓글 분석</h1>
+      <p class="sub">회사명 검색 → 댓글 수집 → 전처리 → AI 증강 → DB 저장 후 필요할 때 AI 요약을 생성할 수 있습니다.</p>
+    </header>
+
+    <section class="search">
+      <form id="search-form" action="{% url 'stocks:index' %}" method="GET">
+        <label for="company">회사명 검색</label>
+        <div class="input-line">
+          <input id="company" type="text" name="company" placeholder="예: 삼성전자" value="{{ company|default:'' }}" maxlength="100" required>
+          <button id="search-button" type="submit">분석 시작</button>
+        </div>
+      </form>
+      <p id="loading-message" class="loading" role="status" aria-live="polite" hidden>댓글을 수집하고 AI가 분석 중입니다. 완료될 때까지 잠시만 기다려 주세요.</p>
+    </section>
+
+    {% if messages %}
+      {% for message in messages %}
+      <div class="notice notice-{% if 'error' in message.tags %}error{% elif 'warning' in message.tags %}warning{% elif 'success' in message.tags %}success{% else %}info{% endif %}" role="status">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    {% if company %}
+    <section aria-label="분석 결과">
+      <div class="result-header">
+        <div>
+          <h2>{{ stock_name|default:'검색 결과 없음' }}</h2>
+          <p class="sub">검색어: {{ company }} · 원본 {{ raw_comments|length }}개 · 정제 {{ cleaned_comments|length }}개 · 증강 {{ augmented_comments|length }}개</p>
+        </div>
+        {% if analysis %}
+        <span class="badge">DB 저장 완료 · #{{ analysis.pk }}</span>
+        {% endif %}
+      </div>
+
+      <div class="grid">
+        <article class="panel">
+          <div class="panel-head">
+            <h3>1. 원본 댓글 <span class="count">{{ raw_comments|length }}</span></h3>
+            <small>토스증권 커뮤니티에서 수집한 원문</small>
+          </div>
+          <ol class="comments" start="0">
+            {% for comment in raw_comments %}
+              <li>{{ comment|linebreaksbr }}</li>
+            {% empty %}
+              <li class="empty">수집된 댓글이 없습니다.</li>
+            {% endfor %}
+          </ol>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <h3>2. 정제 댓글 <span class="count">{{ cleaned_comments|length }}</span></h3>
+            <small>길이 5~76자, 특수문자·부적절 표현 등 필터링</small>
+            {% if iqr_info %}
+            <small>IQR 적용 범위: {{ iqr_info.lower|floatformat:'1' }}~{{ iqr_info.upper|floatformat:'1' }}자</small>
+            {% endif %}
+          </div>
+          <ol class="comments" start="0">
+            {% for comment in cleaned_comments %}
+              <li>{{ comment|linebreaksbr }}</li>
+            {% empty %}
+              <li class="empty">전처리 후 남은 댓글이 없습니다.</li>
+            {% endfor %}
+          </ol>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <h3>3. AI 증강 댓글 <span class="count">{{ augmented_comments|length }}</span></h3>
+            <small>정제 댓글의 의미와 순서를 유지하며 자연스럽게 확장</small>
+          </div>
+          <ol class="comments" start="0">
+            {% for comment in augmented_comments %}
+              <li>{{ comment|linebreaksbr }}</li>
+            {% empty %}
+              <li class="empty">증강된 댓글이 없습니다.</li>
+            {% endfor %}
+          </ol>
+        </article>
+      </div>
+
+      {% if analysis %}
+      <section class="panel summary-panel" aria-label="AI 댓글 요약">
+        <div class="summary-top">
+          <h3>4. AI 댓글 요약 <span class="count"></span></h3>
+          {% if not analysis.summary and raw_comments %}
+          <form id="summary-form" method="POST" action="{% url 'stocks:summary' analysis.pk %}">
+            {% csrf_token %}
+            <button class="summary-button" id="summary-button" type="submit">AI 요약 생성</button>
+          </form>
+          {% endif %}
+        </div>
+        {% if analysis.summary %}
+          <p class="summary-text">{{ analysis.summary }}</p>
+          <p class="summary-help">원본 댓글 {{ raw_comments|length }}개를 기반으로 생성한 AI 요약입니다. 투자 판단의 근거가 아닌 커뮤니티 의견 정리입니다.</p>
+        {% elif raw_comments %}
+          <p class="sub" style="margin-top: 12px">버튼을 누르면 수집된 원본 댓글 전체를 GMS가 요약합니다. 다시 크롤링하지 않고 요약 결과를 DB에 저장합니다.</p>
+          <p class="summary-help">추가 GMS API 호출 1회가 발생합니다. 버튼을 여러 번 눌러도 동일한 분석에 요약을 중복 생성하지 않습니다.</p>
+          <p id="summary-loading" class="loading" role="status" aria-live="polite" hidden>AI가 댓글을 요약 중입니다. 결과가 나타날 때까지 기다려 주세요.</p>
+        {% else %}
+          <p class="sub" style="margin-top: 12px">수집된 댓글이 없어 요약을 생성할 수 없습니다.</p>
+        {% endif %}
+      </section>
+      {% endif %}
+
+      <details class="panel extra">
+        <summary>부적절 댓글 필터링 제외 내역 ({{ removed_comments|length }}개)</summary>
+        {% if removed_comments %}
+          <ul>
+            {% for comment in removed_comments %}
+              <li>{{ comment|linebreaksbr }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="sub">LLM이 제외 대상으로 판단한 댓글이 없습니다.</p>
+        {% endif %}
+      </details>
+    </section>
+    {% endif %}
+  </main>
+  <script>
+    const form = document.getElementById('search-form');
+    const button = document.getElementById('search-button');
+    const loading = document.getElementById('loading-message');
+    form.addEventListener('submit', (event) => {
+      const company = document.getElementById('company').value.trim();
+      if (!company || form.dataset.submitting === 'true') {
+        event.preventDefault();
+        return;
+      }
+      form.dataset.submitting = 'true';
+      button.disabled = true;
+      button.textContent = '분석 중...';
+      loading.hidden = false;
+    });
+    const summaryForm = document.getElementById('summary-form');
+    if (summaryForm) {
+      summaryForm.addEventListener('submit', (event) => {
+        if (summaryForm.dataset.submitting === 'true') {
+          event.preventDefault();
+          return;
+        }
+        summaryForm.dataset.submitting = 'true';
+        const summaryButton = document.getElementById('summary-button');
+        summaryButton.disabled = true;
+        summaryButton.textContent = '요약 생성 중...';
+        document.getElementById('summary-loading').hidden = false;
+      });
+    }
+    window.addEventListener('pageshow', () => {
+      if (summaryForm) {
+        summaryForm.dataset.submitting = 'false';
+        const summaryButton = document.getElementById('summary-button');
+        summaryButton.disabled = false;
+        summaryButton.textContent = 'AI 요약 생성';
+        document.getElementById('summary-loading').hidden = true;
+      }
+      form.dataset.submitting = 'false';
+      button.disabled = false;
+      button.textContent = '분석 시작';
+      loading.hidden = true;
+    });
+  </script>
+</body>
+</html>
