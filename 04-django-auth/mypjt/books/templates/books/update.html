@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h2>도서 수정 페이지</h2>
+  <hr>
+
+  <form method="POST">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="btn btn-primary">수정</button>
+  </form>
+
+  <a href="{% url 'books:detail' book.pk %}" class="btn btn-secondary mt-3">BACK</a>
+{% endblock content %}

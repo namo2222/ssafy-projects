@@ -1,0 +1,48 @@
+
+{% extends 'base.html' %}
+
+{% block content %}
+  <h2>메인 페이지</h2>
+  <hr>
+
+  <form method="GET" class="row mb-4">
+    <div class="col-md-6">
+      <input type="text" name="q"
+             value="{{ keyword }}"
+             class="form-control"
+             placeholder="도서 제목 검색">
+    </div>
+    <div class="col-md-3">
+      <select name="sort" class="form-select">
+        <option value="latest">최신 등록순</option>
+        <option value="rating"
+          {% if sort == 'rating' %}selected{% endif %}>
+          평점 높은순
+        </option>
+      </select>
+    </div>
+    <div class="col-md-3">
+      <button class="btn btn-primary">검색</button>
+    </div>
+
+  </form>
+  <div class="row">
+    {% for book in books %}
+      <div class="col-md-4 mb-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5>{{ book.title }}</h5>
+            <p>{{ book.description|truncatechars:100 }}</p>
+
+            <a href="{% url 'books:detail' book.pk %}"
+               class="btn btn-primary btn-sm">
+              Detail
+            </a>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <p>등록된 도서가 없습니다.</p>
+    {% endfor %}
+  </div>
+{% endblock content %}
